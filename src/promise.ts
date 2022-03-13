@@ -23,9 +23,7 @@ class MyPromise {
     try {
       func(this.resolve, this.reject);
     } catch (err) {
-      if (err instanceof Error) {
-        this.reject(err.message);
-      }
+      this.reject(err);
     }
   }
   resolve = (result: any) => {
@@ -62,6 +60,26 @@ class MyPromise {
           throw reason;
         };
     const promise2 = new MyPromise((resolve, reject) => {
+      if (this.PromiseState === State.FULFILLED) {
+        setTimeout(() => {
+          try {
+            const x = onFulfilled?.(this.PromiseResult);
+            resolvePromise(promise2, x, resolve, reject);
+          } catch (e) {
+            reject?.(e);
+          }
+        });
+      }
+      if (this.PromiseState === State.REJECTED) {
+        setTimeout(() => {
+          try {
+            const x = onRejected?.(this.PromiseResult);
+            resolvePromise(promise2, x, resolve, reject);
+          } catch (e) {
+            reject?.(e);
+          }
+        });
+      }
       if (this.PromiseState === State.PENDING) {
         this.onFulfilledCallbacks.push(() => {
           setTimeout(() => {
@@ -82,26 +100,6 @@ class MyPromise {
               reject?.(e);
             }
           });
-        });
-      }
-      if (this.PromiseState === State.FULFILLED) {
-        setTimeout(() => {
-          try {
-            const x = onFulfilled?.(this.PromiseResult);
-            resolvePromise(promise2, x, resolve, reject);
-          } catch (e) {
-            reject?.(e);
-          }
-        });
-      }
-      if (this.PromiseState === State.REJECTED) {
-        setTimeout(() => {
-          try {
-            const x = onRejected?.(this.PromiseResult);
-            resolvePromise(promise2, x, resolve, reject);
-          } catch (e) {
-            reject?.(e);
-          }
         });
       }
     });
@@ -132,8 +130,7 @@ function resolvePromise(promise2: any, x: any, resolve?: ResolveType, reject?: R
     if (x.PromiseState === State.REJECTED) {
       reject?.(x.PromiseResult);
     }
-  }
-  if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
+  } else if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
     // 2.3.3 如果 x 为对象或函数
     let then;
     try {
