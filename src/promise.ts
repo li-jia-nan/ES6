@@ -4,18 +4,24 @@ enum State {
   REJECTED = 'rejected',
 }
 
-type ResolveType = (result?: any) => void;
-type RejectType = (reason?: any) => void;
-type ConstructorFn = (resolve?: ResolveType, reject?: RejectType) => void;
+// 将需要类型提出来
+type Resolve<T> = (value?: T | PromiseLike<T>) => void;
+type Reject = (reason?: any) => void;
+type Executor<T> = (resolve?: Resolve<T>, reject?: Reject) => void;
+type onFulfilled<T, TResult1> =
+  | ((value: T) => TResult1 | PromiseLike<TResult1> | T)
+  | undefined
+  | null;
+type onRejected<TResult2> = ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null;
 
 const isFunc = (value: any): value is Function => typeof value === 'function';
 
-class MyPromise {
+class MyPromise<T> {
   PromiseResult: any;
   PromiseState: State;
-  private onFulfilledCallbacks: ResolveType[] = [];
-  private onRejectedCallbacks: RejectType[] = [];
-  constructor(func: ConstructorFn) {
+  private onFulfilledCallbacks: Resolve<T>[] = [];
+  private onRejectedCallbacks: Reject[] = [];
+  constructor(func: Executor<T>) {
     this.PromiseState = State.PENDING;
     this.PromiseResult = null;
     this.onFulfilledCallbacks = [];
@@ -26,7 +32,7 @@ class MyPromise {
       this.reject(err);
     }
   }
-  private resolve = (result: any) => {
+  private resolve: Resolve<T> = result => {
     if (this.PromiseState === State.PENDING) {
       setTimeout(() => {
         this.PromiseState = State.FULFILLED;
@@ -37,7 +43,7 @@ class MyPromise {
       });
     }
   };
-  private reject = (reason: any) => {
+  private reject: Reject = reason => {
     if (this.PromiseState === State.PENDING) {
       setTimeout(() => {
         this.PromiseState = State.REJECTED;
@@ -48,7 +54,10 @@ class MyPromise {
       });
     }
   };
-  public then = (onFulfilled?: ResolveType, onRejected?: RejectType) => {
+  public then = <TResult1 = T, TResult2 = never>(
+    onFulfilled?: onFulfilled<T, TResult1>,
+    onRejected?: onRejected<TResult2>
+  ): MyPromise<TResult1 | TResult2> => {
     onFulfilled = isFunc(onFulfilled)
       ? onFulfilled
       : value => {
@@ -59,11 +68,11 @@ class MyPromise {
       : reason => {
           throw reason;
         };
-    const promise2 = new MyPromise((resolve, reject) => {
+    const promise2 = new MyPromise<TResult1 | TResult2>((resolve, reject) => {
       if (this.PromiseState === State.FULFILLED) {
         setTimeout(() => {
           try {
-            const x = onFulfilled?.(this.PromiseResult);
+            const x = onFulfilled?.(this.PromiseResult) as PromiseLike<TResult1 | TResult2>;
             resolvePromise(promise2, x, resolve, reject);
           } catch (e) {
             reject?.(e);
@@ -73,7 +82,7 @@ class MyPromise {
       if (this.PromiseState === State.REJECTED) {
         setTimeout(() => {
           try {
-            const x = onRejected?.(this.PromiseResult);
+            const x = onRejected?.(this.PromiseResult) as PromiseLike<TResult1 | TResult2>;
             resolvePromise(promise2, x, resolve, reject);
           } catch (e) {
             reject?.(e);
@@ -84,7 +93,7 @@ class MyPromise {
         this.onFulfilledCallbacks.push(() => {
           setTimeout(() => {
             try {
-              let x = onFulfilled?.(this.PromiseResult);
+              const x = onFulfilled?.(this.PromiseResult) as PromiseLike<TResult1 | TResult2>;
               resolvePromise(promise2, x, resolve, reject);
             } catch (e) {
               reject?.(e);
@@ -94,7 +103,7 @@ class MyPromise {
         this.onRejectedCallbacks.push(() => {
           setTimeout(() => {
             try {
-              let x = onRejected?.(this.PromiseResult);
+              const x = onRejected?.(this.PromiseResult) as PromiseLike<TResult1 | TResult2>;
               resolvePromise(promise2, x, resolve, reject);
             } catch (e) {
               reject?.(e);
@@ -107,7 +116,12 @@ class MyPromise {
   };
 }
 
-function resolvePromise(promise2: MyPromise, x: any, resolve?: ResolveType, reject?: RejectType) {
+function resolvePromise<T>(
+  promise2: MyPromise<T>,
+  x: T | PromiseLike<T>,
+  resolve?: Resolve<T>,
+  reject?: Reject
+) {
   if (promise2 === x) {
     return reject?.(new TypeError('Chaining cycle detected for promise'));
   }
@@ -126,7 +140,7 @@ function resolvePromise(promise2: MyPromise, x: any, resolve?: ResolveType, reje
   } else if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
     let then;
     try {
-      then = x.then;
+      then = (x as PromiseLike<T>).then;
     } catch (e) {
       return reject?.(e);
     }
@@ -135,14 +149,14 @@ function resolvePromise(promise2: MyPromise, x: any, resolve?: ResolveType, reje
       try {
         then.call(
           x,
-          (y: any) => {
+          y => {
             if (called) {
               return;
             }
             called = true;
             resolvePromise(promise2, y, resolve, reject);
           },
-          (r: any) => {
+          r => {
             if (called) {
               return;
             }
