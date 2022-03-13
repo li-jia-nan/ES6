@@ -25,6 +25,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.5",
     "@babel/preset-env": "^7.16.11",
-    "@types/node": "^17.0.21"
+    "@types/node": "^17.0.21",
+    "promises-aplus-tests": "^2.1.2"
   }
 }

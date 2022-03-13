@@ -12,7 +12,7 @@ const isFunc = (value: any): value is Function => typeof value === 'function';
 
 class MyPromise {
   PromiseResult: any;
-  PromiseState: State = State.PENDING;
+  PromiseState: State;
   onFulfilledCallbacks: ResolveType[] = [];
   onRejectedCallbacks: RejectType[] = [];
   constructor(func: ConstructorFn) {
@@ -30,7 +30,7 @@ class MyPromise {
   }
   resolve = (result: any) => {
     if (this.PromiseState === State.PENDING) {
-      (setImmediate || requestAnimationFrame)(() => {
+      setTimeout(() => {
         this.PromiseState = State.FULFILLED;
         this.PromiseResult = result;
         this.onFulfilledCallbacks.forEach(callback => {
@@ -41,7 +41,7 @@ class MyPromise {
   };
   reject = (reason: any) => {
     if (this.PromiseState === State.PENDING) {
-      (setImmediate || requestAnimationFrame)(() => {
+      setTimeout(() => {
         this.PromiseState = State.REJECTED;
         this.PromiseResult = reason;
         this.onRejectedCallbacks.forEach(callback => {
@@ -64,43 +64,43 @@ class MyPromise {
     const promise2 = new MyPromise((resolve, reject) => {
       if (this.PromiseState === State.PENDING) {
         this.onFulfilledCallbacks.push(() => {
-          (setImmediate || requestAnimationFrame)(() => {
+          setTimeout(() => {
             try {
-              let x = onFulfilled(this.PromiseResult);
+              let x = onFulfilled?.(this.PromiseResult);
               resolvePromise(promise2, x, resolve, reject);
             } catch (e) {
-              reject(e);
+              reject?.(e);
             }
           });
         });
         this.onRejectedCallbacks.push(() => {
-          (setImmediate || requestAnimationFrame)(() => {
+          setTimeout(() => {
             try {
-              let x = onRejected(this.PromiseResult);
+              let x = onRejected?.(this.PromiseResult);
               resolvePromise(promise2, x, resolve, reject);
             } catch (e) {
-              reject(e);
+              reject?.(e);
             }
           });
         });
       }
       if (this.PromiseState === State.FULFILLED) {
-        (setImmediate || requestAnimationFrame)(() => {
+        setTimeout(() => {
           try {
-            const x = onFulfilled(this.PromiseResult);
+            const x = onFulfilled?.(this.PromiseResult);
             resolvePromise(promise2, x, resolve, reject);
           } catch (e) {
-            reject(e);
+            reject?.(e);
           }
         });
       }
       if (this.PromiseState === State.REJECTED) {
-        (setImmediate || requestAnimationFrame)(() => {
+        setTimeout(() => {
           try {
-            const x = onRejected(this.PromiseResult);
+            const x = onRejected?.(this.PromiseResult);
             resolvePromise(promise2, x, resolve, reject);
           } catch (e) {
-            reject(e);
+            reject?.(e);
           }
         });
       }
@@ -116,9 +116,9 @@ class MyPromise {
  * @param  {[type]} resolve   promise2的resolve方法
  * @param  {[type]} reject    promise2的reject方法
  */
-function resolvePromise(promise2, x, resolve, reject) {
+function resolvePromise(promise2: any, x: any, resolve?: ResolveType, reject?: RejectType) {
   if (x === promise2) {
-    return reject(new TypeError('Chaining cycle detected for promise'));
+    return reject?.(new TypeError('Chaining cycle detected for promise'));
   }
   if (x instanceof MyPromise) {
     if (x.PromiseState === State.PENDING) {
@@ -127,10 +127,10 @@ function resolvePromise(promise2, x, resolve, reject) {
       }, reject);
     }
     if (x.PromiseState === State.FULFILLED) {
-      resolve(x.PromiseResult);
+      resolve?.(x.PromiseResult);
     }
     if (x.PromiseState === State.REJECTED) {
-      reject(x.PromiseResult);
+      reject?.(x.PromiseResult);
     }
   }
   if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
@@ -139,7 +139,7 @@ function resolvePromise(promise2, x, resolve, reject) {
     try {
       then = x.then;
     } catch (e) {
-      return reject(e);
+      return reject?.(e);
     }
     if (typeof then === 'function') {
       // 2.3.3.3.3 如果 resolvePromise 和 rejectPromise 均被调用，或者被同一参数调用了多次，则优先采用首次调用并忽略剩下的调用
@@ -148,7 +148,7 @@ function resolvePromise(promise2, x, resolve, reject) {
         then.call(
           x,
           // 2.3.3.3.1 如果 resolvePromise 以值 y 为参数被调用，则运行 [[Resolve]](promise, y)
-          y => {
+          (y: any) => {
             if (called) {
               return;
             }
@@ -156,12 +156,12 @@ function resolvePromise(promise2, x, resolve, reject) {
             resolvePromise(promise2, y, resolve, reject);
           },
           // 2.3.3.3.2 如果 rejectPromise 以据因 r 为参数被调用，则以据因 r 拒绝 promise
-          r => {
+          (r: any) => {
             if (called) {
               return;
             }
             called = true;
-            reject(r);
+            reject?.(r);
           }
         );
       } catch (e) {
@@ -172,14 +172,27 @@ function resolvePromise(promise2, x, resolve, reject) {
         /**
          * 2.3.3.3.4.2 否则以 e 为据因拒绝 promise
          */
-        reject(e);
+        reject?.(e);
       }
     } else {
       // 2.3.3.4 如果 then 不是函数，以 x 为参数执行 promise
-      resolve(x);
+      resolve?.(x);
     }
   } else {
     // 2.3.4 如果 x 不为对象或者函数，以 x 为参数执行 promise
-    return resolve(x);
+    return resolve?.(x);
   }
 }
+
+// 忽略 typescript 校验
+// @ts-ignore
+MyPromise.deferred = () => {
+  const result: any = {};
+  result.promise = new MyPromise((resolve, reject) => {
+    result.resolve = resolve;
+    result.reject = reject;
+  });
+  return result;
+};
+
+module.exports = MyPromise;
