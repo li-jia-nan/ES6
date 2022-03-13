@@ -176,4 +176,4 @@ MyPromise.deferred = () => {
   return result;
 };
 
-module.exports = MyPromise;
+export default MyPromise;
