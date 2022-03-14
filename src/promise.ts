@@ -135,7 +135,7 @@ const resolvePromise = <T>(
       reject?.(x.PromiseResult);
     }
   } else if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
-    let then;
+    let then: PromiseLike<T>['then'];
     try {
       then = (x as PromiseLike<T>).then;
     } catch (e) {
