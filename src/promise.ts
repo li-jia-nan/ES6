@@ -158,6 +158,31 @@ class MyPromise<T> {
     });
     return promise2;
   };
+  /**
+   * Promise.resolve()
+   * @param {[type]} value 要解析为 Promise 对象的值
+   */
+  static resolve = <T>(value?: T | PromiseLike<T>): MyPromise<T> => {
+    // 如果这个值是一个 promise ，那么将返回这个 promise
+    if (value instanceof MyPromise) {
+      return value;
+    }
+    // 否则返回的promise将以此值完成，即以此值执行`resolve()`方法 (状态为fulfilled)
+    return new MyPromise(resolve => {
+      resolve?.(value);
+    });
+  };
+  /**
+   * Promise.reject()
+   * @param {*} reason 表示Promise被拒绝的原因
+   * @returns
+   */
+  static reject = <T = never>(reason?: any): MyPromise<T> => {
+    // 不需要额外判断
+    return new MyPromise((resolve, reject) => {
+      reject?.(reason);
+    });
+  };
 }
 
 /**
