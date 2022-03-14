@@ -11,11 +11,12 @@ type Executor<T> = (resolve?: Resolve<T>, reject?: Reject) => void;
 type onFulfilled<T, TResult1> = ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null;
 type onRejected<TResult2> = ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null;
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 const isFunc = (value: any): value is Function => typeof value === 'function';
 
 class MyPromise<T> {
-  PromiseResult!: T;
-  PromiseState!: State;
+  public PromiseResult!: T;
+  public PromiseState!: State;
   private onFulfilledCallbacks: Resolve<T>[] = [];
   private onRejectedCallbacks: Reject[] = [];
   constructor(func: Executor<T>) {
@@ -56,8 +57,8 @@ class MyPromise<T> {
   ): MyPromise<TResult1 | TResult2> => {
     onFulfilled = isFunc(onFulfilled)
       ? onFulfilled
-      : (value: any) => {
-          return value;
+      : value => {
+          return value as any;
         };
     onRejected = isFunc(onRejected)
       ? onRejected
@@ -112,12 +113,12 @@ class MyPromise<T> {
   };
 }
 
-function resolvePromise<T>(
+const resolvePromise = <T>(
   promise2: MyPromise<T>,
   x: T | PromiseLike<T>,
   resolve?: Resolve<T>,
   reject?: Reject
-) {
+): void => {
   if (promise2 === x) {
     return reject?.(new TypeError('Chaining cycle detected for promise'));
   }
@@ -173,9 +174,10 @@ function resolvePromise<T>(
   } else {
     return resolve?.(x);
   }
-}
+};
 
 // 忽略 typescript 校验
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 MyPromise.deferred = () => {
   const result: Record<PropertyKey, any> = {};
