@@ -215,7 +215,7 @@ class MyPromise<T> {
    * @param {iterable} promises 一个promise的iterable类型（注：Array，Map，Set都属于ES6的iterable类型）的输入
    * @returns
    */
-  static all = <T>(promises: Iterable<T | PromiseLike<T>>): MyPromise<T[]> => {
+  static all = <T>(promises: readonly T[]): MyPromise<T[]> => {
     return new MyPromise((resolve, reject) => {
       // 参数校验
       if (Array.isArray(promises)) {
@@ -226,7 +226,7 @@ class MyPromise<T> {
           return resolve?.(promises);
         }
         promises.forEach((item, index) => {
-          // myPromise.resolve方法中已经判断了参数是否为promise与thenable对象，所以无需在该方法中再次判断
+          // MyPromise.resolve方法中已经判断了参数是否为promise与thenable对象，所以无需在该方法中再次判断
           MyPromise.resolve(item).then(
             value => {
               count++;
@@ -243,6 +243,78 @@ class MyPromise<T> {
                * Promise.all 异步地将失败的那个结果给失败状态的回调函数，而不管其它 promise 是否完成
                */
               reject?.(reason);
+            }
+          );
+        });
+      } else {
+        return reject?.(new TypeError('Argument is not iterable'));
+      }
+    });
+  };
+  /**
+   * Promise.race()
+   * @param {iterable} promises 可迭代对象，类似Array。详见 iterable。
+   * @returns
+   */
+  static race = <T>(promises: readonly T[]): MyPromise<T extends PromiseLike<infer U> ? U : T> => {
+    return new MyPromise((resolve, reject) => {
+      // 参数校验
+      if (Array.isArray(promises)) {
+        // 如果传入的迭代promises是空的，则返回的 promise 将永远等待。
+        if (promises.length) {
+          promises.forEach(item => {
+            /**
+             * 如果迭代包含一个或多个非承诺值和/或已解决/拒绝的承诺，
+             * 则 Promise.race 将解析为迭代中找到的第一个值。
+             */
+            MyPromise.resolve(item).then(resolve, reject);
+          });
+        }
+      } else {
+        return reject?.(new TypeError('Argument is not iterable'));
+      }
+    });
+  };
+  /**
+   * Promise.allSettled()
+   * @param {iterable} promises 一个promise的iterable类型（注：Array，Map，Set都属于ES6的iterable类型）的输入
+   * @returns
+   */
+  static allSettled = <T>(
+    promises: readonly T[]
+  ): MyPromise<PromiseSettledResult<Awaited<T>>[]> => {
+    return new MyPromise((resolve, reject) => {
+      // 参数校验
+      if (Array.isArray(promises)) {
+        let result: any[] = []; // 存储结果
+        let count = 0; // 计数器
+        // 如果传入的是一个空数组，那么就直接返回一个resolved的空数组promise对象
+        if (promises.length === 0) {
+          return resolve?.(promises);
+        }
+        promises.forEach((item, index) => {
+          // 非promise值，通过Promise.resolve转换为promise进行统一处理
+          MyPromise.resolve(item).then(
+            value => {
+              count++;
+              // 对于每个结果对象，都有一个 status 字符串。如果它的值为 fulfilled，则结果对象上存在一个 value 。
+              result[index] = { status: 'fulfilled', value };
+              // 所有给定的promise都已经fulfilled或rejected后,返回这个promise
+              if (count === promises.length) {
+                resolve?.(result);
+              }
+            },
+            reason => {
+              count++;
+              /**
+               * 对于每个结果对象，都有一个 status 字符串。如果值为 rejected，则存在一个 reason 。
+               * value（或 reason ）反映了每个 promise 决议（或拒绝）的值。
+               */
+              result[index] = { status: 'rejected', reason };
+              // 所有给定的promise都已经fulfilled或rejected后,返回这个promise
+              if (count === promises.length) {
+                resolve?.(result);
+              }
             }
           );
         });
