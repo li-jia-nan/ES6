@@ -11,9 +11,10 @@ type Reject = (reason?: any) => void;
 type Executor<T> = (resolve?: Resolve<T>, reject?: Reject) => void;
 type onFulfilled<T, TResult1> = ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null;
 type onRejected<TResult2> = ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null;
+type onFinally = (() => void) | undefined | null;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-const isFunc = (value: any): value is Function => typeof value === 'function';
+const isFunction = (value: any): value is Function => typeof value === 'function';
 
 class MyPromise<T> {
   public PromiseResult!: T;
@@ -91,12 +92,12 @@ class MyPromise<T> {
      * 对于onRejected来说就是返回拒因，
      * onRejected因为是错误分支，我们返回拒因时应该throw一个Error
      */
-    onFulfilled = isFunc(onFulfilled)
+    onFulfilled = isFunction(onFulfilled)
       ? onFulfilled
       : value => {
           return value as any;
         };
-    onRejected = isFunc(onRejected)
+    onRejected = isFunction(onRejected)
       ? onRejected
       : reason => {
           throw reason;
@@ -181,6 +182,73 @@ class MyPromise<T> {
     // 不需要额外判断
     return new MyPromise((resolve, reject) => {
       reject?.(reason);
+    });
+  };
+  /**
+   * Promise.prototype.catch()
+   * @param {*} onRejected
+   */
+  /** */
+  public catch = <TResult = never>(onrejected?: onRejected<TResult>): MyPromise<T | TResult> => {
+    return this.then(null, onrejected);
+  };
+  /**
+   * Promise.prototype.finally()
+   * @param {*} onfinally 无论结果是fulfilled或者是rejected，都会执行的回调函数
+   * @returns
+   */
+  // 无论如何都会执行，不会传值给回调函数
+  public finally = (onfinally?: onFinally): MyPromise<T> => {
+    return this.then(
+      value =>
+        MyPromise.resolve(isFunction(onfinally) ? onfinally() : onfinally).then(() => {
+          return value;
+        }),
+      reason =>
+        MyPromise.resolve(isFunction(onfinally) ? onfinally() : onfinally).then(() => {
+          throw reason;
+        })
+    );
+  };
+  /**
+   * Promise.all()
+   * @param {iterable} promises 一个promise的iterable类型（注：Array，Map，Set都属于ES6的iterable类型）的输入
+   * @returns
+   */
+  static all = <T>(promises: Iterable<T | PromiseLike<T>>): MyPromise<T[]> => {
+    return new MyPromise((resolve, reject) => {
+      // 参数校验
+      if (Array.isArray(promises)) {
+        let result: T[] = []; // 存储结果
+        let count = 0; // 计数器
+        // 如果传入的参数是一个空的可迭代对象，则返回一个已完成（already resolved）状态的 Promise
+        if (promises.length === 0) {
+          return resolve?.(promises);
+        }
+        promises.forEach((item, index) => {
+          // myPromise.resolve方法中已经判断了参数是否为promise与thenable对象，所以无需在该方法中再次判断
+          MyPromise.resolve(item).then(
+            value => {
+              count++;
+              // 每个promise执行的结果存储在result中
+              result[index] = value;
+              // Promise.all 等待所有都完成（或第一个失败）
+              if (count === promises.length) {
+                resolve?.(result);
+              }
+            },
+            reason => {
+              /**
+               * 如果传入的 promise 中有一个失败（rejected），
+               * Promise.all 异步地将失败的那个结果给失败状态的回调函数，而不管其它 promise 是否完成
+               */
+              reject?.(reason);
+            }
+          );
+        });
+      } else {
+        return reject?.(new TypeError('Argument is not iterable'));
+      }
     });
   };
 }
