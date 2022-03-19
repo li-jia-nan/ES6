@@ -1,28 +1,20 @@
+'use strict';
 // 首先将三种状态提出来，用枚举管理
-enum State {
-  PENDING = 'pending',
-  FULFILLED = 'fulfilled',
-  REJECTED = 'rejected',
-}
-
-// 将需要类型提出来
-type Resolve<T> = (value?: T | PromiseLike<T>) => void;
-type Reject = (reason?: any) => void;
-type Executor<T> = (resolve?: Resolve<T>, reject?: Reject) => void;
-type onFulfilled<T, TResult1> = ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null;
-type onRejected<TResult2> = ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null;
-type onFinally = (() => void) | undefined | null;
-
+var State;
+(function (State) {
+  State['PENDING'] = 'pending';
+  State['FULFILLED'] = 'fulfilled';
+  State['REJECTED'] = 'rejected';
+})(State || (State = {}));
 // eslint-disable-next-line @typescript-eslint/ban-types
-const isFunction = (value: any): value is Function => typeof value === 'function';
-
-class MyPromise<T> {
-  public PromiseResult!: T;
-  public PromiseState!: State;
-  private onFulfilledCallbacks: Resolve<T>[] = [];
-  private onRejectedCallbacks: Reject[] = [];
+const isFunction = value => typeof value === 'function';
+class MyPromise {
+  PromiseResult;
+  PromiseState;
+  onFulfilledCallbacks = [];
+  onRejectedCallbacks = [];
   // 构造函数：通过new命令生成对象实例时，自动调用类的构造函数，给类的构造方法constructor添加一个参数func
-  constructor(func: Executor<T>) {
+  constructor(func) {
     this.PromiseState = State.PENDING; // 指定Promise对象的状态属性 PromiseState，初始值为pending
     this.onFulfilledCallbacks = []; //保存成功回调
     this.onRejectedCallbacks = []; // 保存失败回调
@@ -39,7 +31,7 @@ class MyPromise<T> {
     }
   }
   // result为成功态时接收的终值
-  private resolve: Resolve<T> = result => {
+  resolve = result => {
     // 只能由pedning状态 => fulfilled状态 (避免调用多次resolve reject)
     if (this.PromiseState === State.PENDING) {
       /**
@@ -50,7 +42,7 @@ class MyPromise<T> {
        */
       setTimeout(() => {
         this.PromiseState = State.FULFILLED;
-        this.PromiseResult = result as T;
+        this.PromiseResult = result;
         /**
          * 在执行resolve或者reject的时候，遍历自身的callbacks数组，
          * 看看数组里面有没有then那边 保留 过来的 待执行函数，
@@ -63,7 +55,7 @@ class MyPromise<T> {
     }
   };
   // reason为拒绝态时接收的终值
-  private reject: Reject = reason => {
+  reject = reason => {
     // 只能由pedning状态 => rejected状态 (避免调用多次resolve reject)
     if (this.PromiseState === State.PENDING) {
       setTimeout(() => {
@@ -81,10 +73,7 @@ class MyPromise<T> {
    * @param {function} onRejected rejected状态时 执行的函数
    * @returns {function} newPromsie 返回一个新的promise对象
    */
-  public then = <TResult1 = T, TResult2 = never>(
-    onFulfilled?: onFulfilled<T, TResult1>,
-    onRejected?: onRejected<TResult2>
-  ): MyPromise<TResult1 | TResult2> => {
+  then = (onFulfilled, onRejected) => {
     /**
      * 参数校验：Promise规定then方法里面的两个参数如果不是函数的话就要被忽略
      * 所谓“忽略”并不是什么都不干，
@@ -95,7 +84,7 @@ class MyPromise<T> {
     onFulfilled = isFunction(onFulfilled)
       ? onFulfilled
       : value => {
-          return value as any;
+          return value;
         };
     onRejected = isFunction(onRejected)
       ? onRejected
@@ -103,7 +92,7 @@ class MyPromise<T> {
           throw reason;
         };
     // 2.2.7 规范 then 方法必须返回一个 promise 对象
-    const promise2 = new MyPromise<TResult1 | TResult2>((resolve, reject) => {
+    const promise2 = new MyPromise((resolve, reject) => {
       if (this.PromiseState === State.FULFILLED) {
         /**
          * 为什么这里要加定时器setTimeout？
@@ -115,7 +104,7 @@ class MyPromise<T> {
         setTimeout(() => {
           try {
             // 2.2.7.1规范 如果 onFulfilled 或者 onRejected 返回一个值 x ，则运行下面的 Promise 解决过程：[[Resolve]](promise2, x)，即运行resolvePromise()
-            const x = onFulfilled?.(this.PromiseResult)!;
+            const x = onFulfilled?.(this.PromiseResult);
             resolvePromise(promise2, x, resolve, reject);
           } catch (e) {
             // 2.2.7.2 如果 onFulfilled 或者 onRejected 抛出一个异常 e ，则 promise2 必须拒绝执行，并返回拒因 e
@@ -126,7 +115,7 @@ class MyPromise<T> {
       if (this.PromiseState === State.REJECTED) {
         setTimeout(() => {
           try {
-            const x = onRejected?.(this.PromiseResult)!;
+            const x = onRejected?.(this.PromiseResult);
             resolvePromise(promise2, x, resolve, reject);
           } catch (e) {
             reject?.(e);
@@ -138,7 +127,7 @@ class MyPromise<T> {
         this.onFulfilledCallbacks.push(() => {
           setTimeout(() => {
             try {
-              const x = onFulfilled?.(this.PromiseResult)!;
+              const x = onFulfilled?.(this.PromiseResult);
               resolvePromise(promise2, x, resolve, reject);
             } catch (e) {
               reject?.(e);
@@ -148,7 +137,7 @@ class MyPromise<T> {
         this.onRejectedCallbacks.push(() => {
           setTimeout(() => {
             try {
-              const x = onRejected?.(this.PromiseResult)!;
+              const x = onRejected?.(this.PromiseResult);
               resolvePromise(promise2, x, resolve, reject);
             } catch (e) {
               reject?.(e);
@@ -163,7 +152,7 @@ class MyPromise<T> {
    * Promise.resolve()
    * @param {[type]} value 要解析为 Promise 对象的值
    */
-  static resolve = <T>(value?: T | PromiseLike<T>): MyPromise<T> => {
+  static resolve = value => {
     // 如果这个值是一个 promise ，那么将返回这个 promise
     if (value instanceof MyPromise) {
       return value;
@@ -178,7 +167,7 @@ class MyPromise<T> {
    * @param {*} reason 表示Promise被拒绝的原因
    * @returns
    */
-  static reject = <T = never>(reason?: any): MyPromise<T> => {
+  static reject = reason => {
     // 不需要额外判断
     return new MyPromise((resolve, reject) => {
       reject?.(reason);
@@ -189,7 +178,7 @@ class MyPromise<T> {
    * @param {*} onRejected
    */
   /** */
-  public catch = <TResult = never>(onrejected?: onRejected<TResult>): MyPromise<T | TResult> => {
+  catch = onrejected => {
     return this.then(null, onrejected);
   };
   /**
@@ -198,7 +187,7 @@ class MyPromise<T> {
    * @returns
    */
   // 无论如何都会执行，不会传值给回调函数
-  public finally = (onfinally?: onFinally): MyPromise<T> => {
+  finally = onfinally => {
     return this.then(
       value =>
         MyPromise.resolve(isFunction(onfinally) ? onfinally() : onfinally).then(() => {
@@ -215,11 +204,11 @@ class MyPromise<T> {
    * @param {iterable} promises 一个promise的iterable类型（注：Array，Map，Set都属于ES6的iterable类型）的输入
    * @returns
    */
-  static all = <T>(promises: readonly T[]): MyPromise<T[]> => {
+  static all = promises => {
     return new MyPromise((resolve, reject) => {
       // 参数校验
       if (Array.isArray(promises)) {
-        let result: T[] = []; // 存储结果
+        let result = []; // 存储结果
         let count = 0; // 计数器
         // 如果传入的参数是一个空的可迭代对象，则返回一个已完成（already resolved）状态的 Promise
         if (promises.length === 0) {
@@ -256,7 +245,7 @@ class MyPromise<T> {
    * @param {iterable} promises 可迭代对象，类似Array。详见 iterable。
    * @returns
    */
-  static race = <T>(promises: readonly T[]): MyPromise<T extends PromiseLike<infer U> ? U : T> => {
+  static race = promises => {
     return new MyPromise((resolve, reject) => {
       // 参数校验
       if (Array.isArray(promises)) {
@@ -280,13 +269,11 @@ class MyPromise<T> {
    * @param {iterable} promises 一个promise的iterable类型（注：Array，Map，Set都属于ES6的iterable类型）的输入
    * @returns
    */
-  static allSettled = <T>(
-    promises: readonly T[]
-  ): MyPromise<PromiseSettledResult<Awaited<T>>[]> => {
+  static allSettled = promises => {
     return new MyPromise((resolve, reject) => {
       // 参数校验
       if (Array.isArray(promises)) {
-        let result: any[] = []; // 存储结果
+        let result = []; // 存储结果
         let count = 0; // 计数器
         // 如果传入的是一个空数组，那么就直接返回一个resolved的空数组promise对象
         if (promises.length === 0) {
@@ -328,11 +315,11 @@ class MyPromise<T> {
    * @param {iterable} promises 一个promise的iterable类型（注：Array，Map，Set都属于ES6的iterable类型）的输入
    * @returns
    */
-  static any<T>(promises: (T | PromiseLike<T>)[] | Iterable<T | PromiseLike<T>>): MyPromise<T> {
+  static any(promises) {
     return new MyPromise((resolve, reject) => {
       // 参数校验
       if (Array.isArray(promises)) {
-        let errors: any[] = []; //
+        let errors = []; //
         let count = 0; // 计数器
         // 如果传入的参数是一个空的可迭代对象，则返回一个 已失败（already rejected） 状态的 Promise。
         if (promises.length === 0) {
@@ -364,7 +351,6 @@ class MyPromise<T> {
     });
   }
 }
-
 /**
  * 对 resolve、reject 进行改造增强，针对 resolve 和 reject 中不同值情况进行处理
  * @param  {promise} promise2 promise1.then 方法返回的新的 promise 对象
@@ -372,12 +358,7 @@ class MyPromise<T> {
  * @param  {[type]} resolve   promise2 的 resolve 方法
  * @param  {[type]} reject    promise2 的 reject 方法
  */
-const resolvePromise = <T>(
-  promise2: MyPromise<T>,
-  x: T | PromiseLike<T>,
-  resolve?: Resolve<T>,
-  reject?: Reject
-): void => {
+const resolvePromise = (promise2, x, resolve, reject) => {
   // 2.3.1 规范 如果 promise 和 x 指向同一对象，以 TypeError 为据因拒绝执行 reject
   if (promise2 === x) {
     return reject?.(new TypeError('Chaining cycle detected for promise'));
@@ -404,10 +385,10 @@ const resolvePromise = <T>(
     }
   } else if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
     // 2.3.3 如果 x 为对象或函数
-    let then: PromiseLike<T>['then'];
+    let then;
     try {
       // 2.3.3.1 把 x.then 赋值给 then
-      then = (x as PromiseLike<T>).then;
+      then = x.then;
     } catch (e) {
       // 2.3.3.2 如果取 x.then 的值时抛出错误 e ，则以 e 为据因拒绝 promise
       return reject?.(e);
@@ -467,7 +448,7 @@ const resolvePromise = <T>(
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 Reflect.set(MyPromise, 'deferred', () => {
-  const result: Record<PropertyKey, any> = {};
+  const result = {};
   Reflect.set(
     result,
     'promise',
