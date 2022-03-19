@@ -328,7 +328,7 @@ class MyPromise<T> {
    * @param {iterable} promises 一个promise的iterable类型（注：Array，Map，Set都属于ES6的iterable类型）的输入
    * @returns
    */
-  static any<T>(promises: (T | PromiseLike<T>)[] | Iterable<T | PromiseLike<T>>): MyPromise<T> {
+  static any = <T>(promises: (T | PromiseLike<T>)[]): MyPromise<T> => {
     return new MyPromise((resolve, reject) => {
       // 参数校验
       if (Array.isArray(promises)) {
@@ -362,7 +362,7 @@ class MyPromise<T> {
         return reject?.(new TypeError('Argument is not iterable'));
       }
     });
-  }
+  };
 }
 
 /**

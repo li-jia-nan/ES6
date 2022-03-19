@@ -315,7 +315,7 @@ class MyPromise {
    * @param {iterable} promises 一个promise的iterable类型（注：Array，Map，Set都属于ES6的iterable类型）的输入
    * @returns
    */
-  static any(promises) {
+  static any = promises => {
     return new MyPromise((resolve, reject) => {
       // 参数校验
       if (Array.isArray(promises)) {
@@ -349,7 +349,7 @@ class MyPromise {
         return reject?.(new TypeError('Argument is not iterable'));
       }
     });
-  }
+  };
 }
 /**
  * 对 resolve、reject 进行改造增强，针对 resolve 和 reject 中不同值情况进行处理
