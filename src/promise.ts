@@ -366,7 +366,7 @@ class MyPromise<T> {
 }
 
 /**
- * 对 resolve、reject 进行改造增强，针对 resolve 和 reject 中不同值情况进行处理
+ * 对 resolve、reject 进行改造增强，针对 resolve 和 reject 中不同值的情况进行处理
  * @param  {promise} promise2 promise1.then 方法返回的新的 promise 对象
  * @param  {[type]} x         promise1 中 onFulfilled 或 onRejected 的返回值
  * @param  {[type]} resolve   promise2 的 resolve 方法
