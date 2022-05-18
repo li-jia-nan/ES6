@@ -466,7 +466,7 @@ const resolvePromise = <T>(
 // 下面这部分代码是用来跑测试用例的，和 Promise 本身无关
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-Reflect.set(MyPromise, 'deferred', () => {
+Reflect.set(MyPromise, '', () => {
   const result: Record<PropertyKey, any> = {};
   Reflect.set(
     result,
