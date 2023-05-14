@@ -4,9 +4,9 @@
   "description": "ES6学习笔记",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node",
+    "start": "ts-node --esm --project tsconfig.json src/promise.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "promises-aplus-tests dist/promise.js"
+    "test": "npm run build && promises-aplus-tests dist/promise.js"
   },
   "repository": {
     "type": "git",

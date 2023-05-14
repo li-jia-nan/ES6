@@ -463,21 +463,16 @@ const resolvePromise = <T>(
   }
 };
 
-// 下面这部分代码是用来跑测试用例的，Promise 本身无关
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Reflect.set(MyPromise, 'deferred', () => {
+// 下面这部分代码用来跑测试用例，和 Promise 本身无关
+const receiver = () => {
   const result: Record<PropertyKey, any> = {};
-  Reflect.set(
-    result,
-    'promise',
-    new MyPromise((resolve, reject) => {
-      Reflect.set(result, 'resolve', resolve);
-      Reflect.set(result, 'reject', reject);
-    })
-  );
+  result.promise = new MyPromise((resolve, reject) => {
+    result.resolve = resolve;
+    result.reject = reject;
+  });
   return result;
-});
+};
+
+Reflect.set(MyPromise, 'deferred', receiver);
 
 module.exports = MyPromise;
