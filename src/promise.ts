@@ -465,8 +465,8 @@ const resolvePromise = <T>(
 
 // 下面这部分代码用来跑测试用例，和 Promise 本身无关
 const receiver = () => {
-  const result: Record<PropertyKey, any> = {};
-  result.promise = new MyPromise((resolve, reject) => {
+  const result: Partial<Record<'promise' | 'resolve' | 'reject', any>> = {};
+  result.promise = new MyPromise<any>((resolve, reject) => {
     result.resolve = resolve;
     result.reject = reject;
   });
